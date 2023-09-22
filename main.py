@@ -1,7 +1,6 @@
 import requests
-import json
 import webbrowser
-import time
+
 
 from fastapi import FastAPI
 
@@ -54,6 +53,8 @@ async def recieve_code(code: str):
         json=payload,
     )
 
+    meeting_id = None
+
     # Verificar o status da resposta
     if response.status_code == 201:
         # A reunião foi criada com sucesso
@@ -73,6 +74,41 @@ async def recieve_code(code: str):
         # Houve um erro ao criar a reunião
         print("Limite diário da API excedido")
 
+    print("segundo mt: ",meeting_id)
+    if meeting_id != None:
+        #cria os dados da enquete
+        payload = {
+                    "anonymous": True,
+                    "poll_type": 1,
+                    "questions":
+                    [{
+                        "answer_required": True,
+                        "answers":
+                        [
+                            '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'
+                        ],
+                        "name": "Marque a quantidade de espectadores",
+                        "type": "single"
+                    }],
+                    "title": "Quantos estão assistindo?"
+                }
 
+        print("indo fazer segunda request")
+        #Faz a HTTP request para criar a enquete na reunião
+        response = requests.post(
+            f"https://api.zoom.us/v2/meetings/{meeting_id}/polls",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=payload,
+        )
+
+        print("fez segunda request: ", response.content)
+        if response.status_code == 201:
+            print("Enquete criada com sucesso")
+
+        elif response.status_code == 400:
+            print("Falha ao criar enquete: possivelmente a conta não pode criar pools")
+
+        elif response.status_code == 404:
+            print("Falha ao criar enquete: Reunião não encontrada")
 
     return 'OPA'
