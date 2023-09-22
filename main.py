@@ -6,7 +6,6 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-token = ''
 
 # Definir as credenciais do OAuth app
 CLIENT_ID = "y23hZAm2QrSWJ4DYxdDCKw"
@@ -15,7 +14,7 @@ REDIRECT_URI = "http://localhost:8080/auth/zoom"
 
 # Definir os dados da reunião
 title = "Reunião de teste"
-start_time = "2023-09-22T10:00:00Z"
+start_time = "2023-09-23T10:00:00Z"
 duration = "30"
 agenda = "Reunião de teste para testar a API do Zoom"
 
