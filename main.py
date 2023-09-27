@@ -1,20 +1,20 @@
+import sys
+
 import requests
 import webbrowser
-
-
 from fastapi import FastAPI
 
 app = FastAPI()
 
 
 # Definir as credenciais do OAuth app
-CLIENT_ID = "y23hZAm2QrSWJ4DYxdDCKw"
-CLIENT_SECRET = "VUFvjcNym6aNim6e5t5n7v1DZKJw0WMI"
+CLIENT_ID = "RjYh00vbQLSsNvq7grWuVQ"
+CLIENT_SECRET = "06sXnx5G4gxPZkE2h6VL3WLsFS7t11Xt"
 REDIRECT_URI = "http://localhost:8080/auth/zoom"
 
 # Definir os dados da reunião
 title = "Reunião de teste"
-start_time = "2023-09-23T10:00:00Z"
+start_time = "2023-09-24T13:00:00"
 duration = "30"
 agenda = "Reunião de teste para testar a API do Zoom"
 
@@ -43,6 +43,7 @@ async def recieve_code(code: str):
         "start_time": start_time,
         "duration": duration,
         "agenda": agenda,
+
     }
 
     # Enviar a solicitação para a API do Zoom
@@ -84,7 +85,7 @@ async def recieve_code(code: str):
                         "answer_required": True,
                         "answers":
                         [
-                            '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'
+                            'Já respondi', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'
                         ],
                         "name": "Marque a quantidade de espectadores",
                         "type": "single"
@@ -110,4 +111,5 @@ async def recieve_code(code: str):
         elif response.status_code == 404:
             print("Falha ao criar enquete: Reunião não encontrada")
 
-    return 'OPA'
+
+    return 'Reunião criada com sucesso'
