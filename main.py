@@ -1,21 +1,39 @@
+import sys
+
 import PySimpleGUI as sg
 import datetime
 from datetime import date
 import requests
 import webbrowser
 from fastapi import FastAPI
-from enum import Enum
+import uvicorn
+import pyperclip
+import asyncio
 
-class weekdays(Enum):
-    monday = 0
-    tuesday = 1
-    wednesday = 2
-    thursday = 3
-    friday = 4
-    saturday = 5
-    sunday = 6
+weekdays = {
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6
+}
 
-app = FastAPI()
+months = {
+    "01": "Janeiro",
+    "02": "Fevereiro",
+    "03": "Março",
+    "04": "Abril",
+    "05": "Maio",
+    "06": "Junho",
+    "07": "Julho",
+    "08": "Agosto",
+    "09": "Setembro",
+    "10": "Outubro",
+    "11": "Novembro",
+    "12": "Dezembro"
+}
 
 def next_day(given_date, weekday):
     day_shift = (weekday - given_date.weekday()) % 7
@@ -23,30 +41,61 @@ def next_day(given_date, weekday):
 
 today = date.today()
 weekday = today.weekday()
-if  weekday == weekdays.sunday or weekday == weekdays.monday or weekday == weekdays.tuesday:
-    midWeek = True
 
-layout = [
-            [sg.Input(date.today().strftime('%d/%m/%Y'), readonly=True, expand_x=True, key='rd_InpImgPath'), sg.CalendarButton("Escolha a data", format='%d/%m/%Y')],
-            [sg.Spin(list(range(0,24)), "19", key='-HOURS-', s=3), sg.Text(':'),
-                sg.Spin(list(range(0,60,5)), "30", key='-MIN-', s=3), ],
-            [sg.Button('Ok'), sg.Button('Cancel')]
-        ]
+if weekday == weekdays["sunday"] or weekday == weekdays["monday"] or weekday == weekdays["tuesday"]:
+    next_meeting_day = next_day(today, weekdays["tuesday"])
+else:
+    next_meeting_day = next_day(today, weekdays["saturday"])
 
-window = sg.Window('Time Entry', layout, font='Courier 15')
+time_selector = [sg.Spin(list(range(0,24)), "19", readonly = True, key='-HOURS-', s=3), sg.Text(':'),
+                sg.Spin(list(range(0,60,5)), "30", readonly = True, key='-MIN-', s=3)]
 
-hours = minutes = None
+date_selector = [sg.Input(next_meeting_day.strftime('%d/%m/%Y'), size=(10,0),readonly=True, key='-DAY-'),
+                 sg.CalendarButton("Escolha a data", format='%d/%m/%Y')]
 
+title_selector = [sg.Input("Reunião", expand_x=True, size=(15,0), key='-TITLE-'), sg.Checkbox("Incluir data no título", default=True, key="-INCLUDE-")]
+
+create_layout = [
+            [sg.Column([[sg.Text("Título da reunião:")]], expand_x=True)],
+            [sg.Column([title_selector], expand_x=True)],
+            [sg.Column([[sg.Text("Dia da reunião:")]], expand_x=True)],
+            [sg.Column([date_selector], element_justification="left", expand_x=True)],
+            [sg.Column([[sg.Text("Horário da reunião:")]], expand_x=True)],
+            [sg.Column([time_selector], element_justification="left", expand_x=True)],
+            [sg.Column([[sg.Text("Duração:")]], expand_x=True)],
+            [sg.Column([[sg.Spin(list(range(30,500,5)), "150", size=(5,0),readonly = True, key='-DURATION-')]], expand_x=True)],
+            [sg.Button('Cancel'), sg.HSeparator() ,sg.Button('Ok', size=(6,0))]
+]
+
+
+
+#layout = [[
+#    sg.Column(create_layout, visible=True, key='-WIN1-'),
+#    sg.Column(msg_layout, visible=False, key='-WIN2-')
+#]]
+sg.theme("Reddit")
+
+window = sg.Window('Agendador', create_layout, font=("Arial Baltic", 14))
+
+hours = minutes = mt_date = duration = None
+title = "Reunião Teste"
 while True:
     event, values = window.read()
     if event == sg.WIN_CLOSED or event == 'Cancel':
+        sys.exit()
         break
     if event == 'Ok':
-        hours, minutes = values["-HOURS-"], values["-MIN-"]
+        hours, minutes, mt_date, duration = values["-HOURS-"], values["-MIN-"], values["-DAY-"], values["-DURATION-"]
+        title = f"{values['-TITLE-']} {values['-DAY-'] if values['-INCLUDE-'] else ''}"
         break
 
+
+
 window.close()
-sg.popup(hours, minutes)
+#sg.popup(hours, minutes, mt_date)
+#sys.exit()
+app = FastAPI()
+
 
 # Definir as credenciais do OAuth app
 CLIENT_ID = "y23hZAm2QrSWJ4DYxdDCKw"# cong: "RjYh00vbQLSsNvq7grWuVQ"
@@ -54,10 +103,12 @@ CLIENT_SECRET = "VUFvjcNym6aNim6e5t5n7v1DZKJw0WMI" # cong: "06sXnx5G4gxPZkE2h6VL
 REDIRECT_URI = "http://localhost:8080/auth/zoom"
 
 # Definir os dados da reunião
-title = "Reunião de teste"
-start_time = "2023-09-29T13:00:00"
-duration = "30"
-agenda = "Reunião de teste para testar a API do Zoom"
+
+
+formated_date = datetime.datetime.strptime(mt_date, '%d/%m/%Y').strftime('%Y-%m-%d')
+print(formated_date)
+start_time = f"{formated_date}T{hours}:{minutes}:00"
+agenda = "Reunião"
 
 # Obter o código de autorização
 auth_url = "https://zoom.us/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=user_meetings:create".format(
@@ -95,27 +146,25 @@ async def recieve_code(code: str):
     )
 
     meeting_id = None
+    msg = ''
 
     # Verificar o status da resposta
     if response.status_code == 201:
         # A reunião foi criada com sucesso
         meeting_id = response.json()["id"]
 
-        msg = f"""
-            Central Paulista está lhe convidando para uma reunião Zoom.
-            
-            Tópico: {title}
-            Horário: Setembro 23, 2023 19:30 Recife
-            
-            Entrar na reunião Zoom
-            {response.json()["join_url"]}
-            
-            Meeting ID: {meeting_id}
-            Senha: {response.json()["password"]}
-        """
-        print(msg)
-        print(f"Reunião criada com sucesso: {response.content}")
-        #print(meeting_id)
+        msg_date = formated_date.split("-")
+        msg = f"""Central Paulista está lhe convidando para uma reunião Zoom.
+
+Tópico: {title}
+Horário: {months[msg_date[1]]} {msg_date[2]}, {msg_date[0]}, {hours}:{minutes}, Recife
+
+Entrar na reunião Zoom
+{response.json()["join_url"]}
+
+Meeting ID: {meeting_id}
+Senha: {response.json()["password"]}"""
+
 
     elif response.status_code == 400:
         # Houve um erro ao criar a reunião
@@ -163,5 +212,28 @@ async def recieve_code(code: str):
         elif response.status_code == 404:
             print("Falha ao criar enquete: Reunião não encontrada")
 
+    msg_layout = [
+        [sg.Text("Convite para a reunião")],
+        [sg.Multiline(default_text=msg, size=(40, 20), disabled=True, key="-MSG-")],
+        [sg.Button("Fechar"), sg.HSeparator(), sg.Button("Copiar")]
+    ]
+    window = sg.Window('Agendador', msg_layout, font=("Arial Baltic", 14))
+    #window['-MSG-'].update(msg)
 
-    return msg
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'Fechar':
+            break
+        if event == 'Copiar':
+            pyperclip.copy(msg)
+            pyperclip.paste()
+            window["Copiar"].update("Copiado!")
+
+    loop = asyncio.get_event_loop()
+    loop.stop()
+    window.close()
+    sys.exit()
+    #return msg
+
+if __name__ == '__main__':
+    uvicorn.run(app, port=8080)
