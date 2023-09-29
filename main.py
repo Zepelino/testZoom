@@ -118,7 +118,7 @@ auth_url = "https://zoom.us/oauth/authorize?response_type=code&client_id={CLIENT
 webbrowser.open(auth_url)
 
 
-@app.api_route("/auth/zoom/", methods=["GET", "POST", "DELETE"])
+@app.api_route("/auth/zoom/", methods=["GET", "POST"])
 async def recieve_code(code: str):
     print(code)
     token_url = "https://zoom.us/oauth/token?grant_type=authorization_code&code={code}&client_id={CLIENT_ID}&client_secret={CLIENT_SECRET}&redirect_uri={REDIRECT_URI}".format(
@@ -212,13 +212,13 @@ Senha: {response.json()["password"]}"""
         elif response.status_code == 404:
             print("Falha ao criar enquete: Reunião não encontrada")
 
+
     msg_layout = [
         [sg.Text("Convite para a reunião")],
         [sg.Multiline(default_text=msg, size=(40, 20), disabled=True, key="-MSG-")],
         [sg.Button("Fechar"), sg.HSeparator(), sg.Button("Copiar")]
     ]
     window = sg.Window('Agendador', msg_layout, font=("Arial Baltic", 14))
-    #window['-MSG-'].update(msg)
 
     while True:
         event, values = window.read()
@@ -233,7 +233,7 @@ Senha: {response.json()["password"]}"""
     loop.stop()
     window.close()
     sys.exit()
-    #return msg
+
 
 if __name__ == '__main__':
     uvicorn.run(app, port=8080)
