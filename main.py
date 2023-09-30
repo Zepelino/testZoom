@@ -1,4 +1,6 @@
 import sys
+import random
+import string
 
 import PySimpleGUI as sg
 import datetime
@@ -35,12 +37,19 @@ months = {
     "12": "Dezembro"
 }
 
+def generate_password(length):
+    # choose from all lowercase letter
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
+
 def next_day(given_date, weekday):
     day_shift = (weekday - given_date.weekday()) % 7
     return given_date + datetime.timedelta(days=day_shift)
 
 today = date.today()
 weekday = today.weekday()
+
 
 if weekday == weekdays["sunday"] or weekday == weekdays["monday"] or weekday == weekdays["tuesday"]:
     next_meeting_day = next_day(today, weekdays["tuesday"])
@@ -98,8 +107,8 @@ app = FastAPI()
 
 
 # Definir as credenciais do OAuth app
-CLIENT_ID = "y23hZAm2QrSWJ4DYxdDCKw"# cong: "RjYh00vbQLSsNvq7grWuVQ"
-CLIENT_SECRET = "VUFvjcNym6aNim6e5t5n7v1DZKJw0WMI" # cong: "06sXnx5G4gxPZkE2h6VL3WLsFS7t11Xt"
+CLIENT_ID = "RjYh00vbQLSsNvq7grWuVQ" #"y23hZAm2QrSWJ4DYxdDCKw"
+CLIENT_SECRET = "06sXnx5G4gxPZkE2h6VL3WLsFS7t11Xt" #"VUFvjcNym6aNim6e5t5n7v1DZKJw0WMI"
 REDIRECT_URI = "http://localhost:8080/auth/zoom"
 
 # Definir os dados da reunião
@@ -135,7 +144,7 @@ async def recieve_code(code: str):
         "start_time": start_time,
         "duration": duration,
         "agenda": agenda,
-
+        "password": generate_password(8)
     }
 
     # Enviar a solicitação para a API do Zoom
@@ -153,6 +162,7 @@ async def recieve_code(code: str):
         # A reunião foi criada com sucesso
         meeting_id = response.json()["id"]
 
+        print(response.json())
         msg_date = formated_date.split("-")
         msg = f"""Central Paulista está lhe convidando para uma reunião Zoom.
 
